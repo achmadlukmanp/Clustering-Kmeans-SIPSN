@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% set active = "upload" %}
+{% block content %}
+<div class="eyebrow-tag">Langkah 2</div>
+<h2 class="page-title">Upload Data</h2>
+<p class="page-sub">Unggah satu atau beberapa file Excel/CSV data pengelolaan sampah per wilayah. Jika diunggah bertahap, data baru akan digabungkan otomatis ke data yang sudah ada (diproses pandas.concat di backend). <b>Pastikan format seluruh file yang diunggah menggunakan template data yang sama</b> (nama &amp; urutan kolom identik), agar proses penggabungan data berjalan dengan benar.</p>
+
+<div class="card">
+  <h3>Upload Data</h3>
+  <p class="card-desc">Pilih satu atau beberapa file sekaligus, atau ulangi upload untuk menambah file lain — semua akan digabung jadi satu tabel.</p>
+  <form action="{{ url_for('upload_merge') }}" method="post" enctype="multipart/form-data">
+    <div class="row">
+      <input type="file" name="files" accept=".xlsx,.xls,.csv" multiple required>
+      <button type="submit" class="btn">Gabungkan &amp; Proses Data</button>
+    </div>
+  </form>
+
+  {% if file_names %}
+  <ul class="file-list">
+    {% for name in file_names %}
+    <li><span>📄 {{ name }}</span></li>
+    {% endfor %}
+  </ul>
+
+  {% if upload_message %}
+  <div class="badge ok" style="margin-top:12px;">
+    {{ upload_message }}
+  </div>
+  {% endif %}
+
+  <form action="{{ url_for('upload_reset_files') }}"
+        method="post" 
+        style="margin-top:16px;">
+    <button type="submit" class="btn secondary">
+      Hapus Semua File &amp; Mulai Ulang Upload
+    </button>
+  </form>
+  {% endif %}
+
+</div>
+
+{% if headers %}
+{% if multi_year %}
+<div class="empty-hint" style="border-style:solid;border-color:var(--accent);background:var(--accent-tint);color:#5A3A0B;margin-bottom:20px;">
+  Data ini mencakup <b>{{ n_years }} tahun</b> berbeda. Agregasi data per Kabupaten/Kota akan dilakukan pada tahap Processing Data (setelah missing value ditangani).
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Ringkasan Data</h3>
+  <div class="stat-row">
+    <div class="stat-box"><div class="num">{{ row_count }}</div><div class="lbl">Baris</div></div>
+    <div class="stat-box"><div class="num">{{ col_count }}</div><div class="lbl">Variabel/Kolom</div></div>
+    <div class="stat-box"><div class="num">{{ file_names|length }}</div><div class="lbl">File digabungkan</div></div>
+  </div>
+  <h3 style="margin-top:6px;">Pratinjau Data</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in preview_rows %}
+        <tr>{% for h in headers %}<td>{{ row[h] if row[h] is not none else '—' }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if var_headers %}
+<form id="varSelectForm" action="{{ url_for('upload_proceed') }}" method="post">
+  <div class="card">
+    <h3>Pilih Variabel</h3>
+    <p class="card-desc">
+      <b>Pilih hanya variabel numerik.</b> Hanya kolom numerik yang ditampilkan di bawah ini (kolom Provinsi/Kabupaten-Kota/Tahun sudah dikeluarkan otomatis). Centang variabel yang diperlukan, lalu langsung klik <b>Lanjutkan</b> — tidak perlu langkah tambahan lain di sini. Variabel yang dicentang inilah yang akan diproses pada seluruh tahap Processing Data berikutnya (rename, missing value, agregasi, standarisasi), jadi pastikan sudah sesuai sebelum melanjutkan.
+    </p>
+
+    <div class="var-grid">
+      {% for h in var_headers %}
+      <label class="var-chip">
+        <!-- Atribut 'checked' sudah dihapus di bawah ini -->
+        <input type="checkbox" name="selected_vars" value="{{ h }}">
+        {{ h }}
+        <span class="tag-num">num</span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button type="submit" class="btn primary">Lanjutkan ke Processing Data &rarr;</button>
+    </div>
+  </div>
+</form>
+
+<!-- JavaScript Validasi Minimal 1 Variabel -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const form = document.getElementById('varSelectForm');
+    
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        // Cek berapa banyak checkbox 'selected_vars' yang dicentang
+        const checkedVars = document.querySelectorAll('input[name="selected_vars"]:checked');
+        
+        if (checkedVars.length === 0) {
+          e.preventDefault(); // Batalkan pengiriman form
+          alert('Pilih minimal 1 variabel numerik sebelum melanjutkan ke tahap berikutnya!');
+        }
+      });
+    }
+  });
+</script>
+{% else %}
+<div class="card"><div class="empty-hint">Tidak ada kolom numerik yang terdeteksi pada data ini. Periksa kembali data yang diunggah.</div></div>
+{% endif %}
+{% endif %}
+{% endblock %}

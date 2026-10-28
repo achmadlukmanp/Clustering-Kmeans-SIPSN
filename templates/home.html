@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set active = "home" %}
+{% block content %}
+<div class="hero">
+  <div class="hero-copy">
+    <h1>Pengelompokan Wilayah di Indonesia Berdasarkan Karakteristik Pengelolaan Sampah Menggunakan K-Means</h1>
+    <p>Dashboard ini digunakan untuk mengelompokkan kabupaten/kota di Indonesia berdasarkan karakteristik 
+      pengelolaan sampah menggunakan metode K-Means. 
+      Hasil pengelompokan menunjukkan wilayah yang memiliki karakteristik pengelolaan sampah yang 
+      serupa, sehingga dapat memberikan gambaran mengenai tingkat pengelolaan sampah di berbagai 
+      wilayah Indonesia.</p>
+    <a class="btn accent" href="{{ url_for('upload_page') }}">Mulai Unggah Data →</a>
+  </div>
+  <div class="hero-visual">
+    <svg width="300" height="280" viewBox="0 0 300 280" fill="none">
+      <g opacity="0.9">
+        <circle cx="60" cy="60" r="7" fill="#1F6F5C"/><circle cx="88" cy="44" r="5" fill="#1F6F5C"/>
+        <circle cx="46" cy="92" r="6" fill="#1F6F5C"/><circle cx="100" cy="86" r="4" fill="#1F6F5C"/>
+        <circle cx="70" cy="108" r="5" fill="#1F6F5C"/><circle cx="30" cy="58" r="4" fill="#1F6F5C"/>
+      </g>
+      <g opacity="0.9">
+        <circle cx="220" cy="70" r="6" fill="#D68C34"/><circle cx="245" cy="95" r="5" fill="#D68C34"/>
+        <circle cx="200" cy="100" r="7" fill="#D68C34"/><circle cx="235" cy="50" r="4" fill="#D68C34"/>
+        <circle cx="255" cy="120" r="4" fill="#D68C34"/><circle cx="205" cy="60" r="4" fill="#D68C34"/>
+      </g>
+      <g opacity="0.9">
+        <circle cx="140" cy="200" r="7" fill="#B65C38"/><circle cx="170" cy="220" r="5" fill="#B65C38"/>
+        <circle cx="115" cy="225" r="5" fill="#B65C38"/><circle cx="155" cy="245" r="4" fill="#B65C38"/>
+        <circle cx="185" cy="195" r="4" fill="#B65C38"/><circle cx="125" cy="190" r="4" fill="#B65C38"/>
+      </g>
+      <path d="M100 90 L200 90" stroke="#D9D6C6" stroke-width="1" stroke-dasharray="3 4"/>
+      <path d="M110 150 L160 195" stroke="#D9D6C6" stroke-width="1" stroke-dasharray="3 4"/>
+      <path d="M210 130 L170 195" stroke="#D9D6C6" stroke-width="1" stroke-dasharray="3 4"/>
+    </svg>
+  </div>
+</div>
+
+<div class="flow-strip">
+  <div class="flow-item"><div class="fnum">01</div><div class="ftitle">Upload Data</div><div class="fdesc">Gabungkan file Excel, pilih variabel yang diproses.</div></div>
+  <div class="flow-item"><div class="fnum">02</div><div class="ftitle">Processing</div><div class="fdesc">Rename kolom, tangani missing value, standarisasi.</div></div>
+  <div class="flow-item"><div class="fnum">03</div><div class="ftitle">Pemodelan</div><div class="fdesc">Tentukan k lewat elbow &amp; silhouette, jalankan K-Means.</div></div>
+  <div class="flow-item"><div class="fnum">04</div><div class="ftitle">Evaluasi</div><div class="fdesc">Menilai kualitas klaster berdasarkan Silhouette Score & DBI.</div></div>
+  <div class="flow-item"><div class="fnum">05</div><div class="ftitle">Interpretasi</div><div class="fdesc">Profil tiap klaster &amp; kesimpulan pengelolaan sampah.</div></div>
+</div>
+{% endblock %}

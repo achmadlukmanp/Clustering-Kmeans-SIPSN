@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% set active = "processing" %}
+{% block content %}
+<div class="eyebrow-tag">Langkah 3</div>
+<h2 class="page-title">Processing Data</h2>
+<p class="page-sub">Ganti nama variabel agar mudah dibaca, periksa dan tangani missing value, lalu standarisasi data sebelum masuk ke pemodelan.</p>
+
+<div class="card" id="card-rename">
+  <h3>1. Rename Variabel</h3>
+  <p class="card-desc">Ubah nama kolom sesuai kebutuhan, lalu terapkan.</p>
+  <form action="{{ url_for('processing_rename') }}" method="post">
+    <div class="rename-grid">
+      {% for h in headers %}
+      <div class="rename-item">
+        <label>{{ h }}</label>
+        <input type="text" name="rename__{{ h }}" value="{{ h }}">
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn secondary">Terapkan Rename</button>
+  </form>
+
+  {% if renamed_preview %}
+  <div style="margin-top:16px;">
+    <h3>Data Setelah Rename</h3>
+    <div class="table-wrap short">
+      <table>
+        <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in renamed_preview %}
+          <tr>{% for h in headers %}<td>{{ row[h] if row[h] is not none else '—' }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" id="card-missing">
+  <h3>2. Cek Missing Value</h3>
+  <form action="{{ url_for('processing_check_missing') }}" method="post">
+    <button type="submit" class="btn secondary">Cek Missing Value</button>
+  </form>
+  {% if missing_counts %}
+  <div style="margin-top:16px;">
+    <div class="table-wrap short">
+      <table>
+        <thead><tr><th>Variabel</th><th>Jumlah Missing Value</th></tr></thead>
+        <tbody>
+          {% for h, c in missing_counts.items() %}
+          <tr><td>{{ h }}</td><td>{{ c }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="badge {{ 'warn' if missing_total > 0 else 'ok' }}" style="margin-top:12px;">
+      Total missing value: {{ missing_total }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" id="card-handle">
+  <h3>3. Tangani Missing Value</h3>
+  <form action="{{ url_for('processing_handle_missing') }}" method="post">
+    <button type="submit" class="btn secondary" {% if not missing_counts %}disabled{% endif %}>Tangani Missing Value</button>
+  </form>
+  {% if handled_counts %}
+  <div style="margin-top:16px;">
+    <div class="table-wrap short">
+      <table>
+        <thead><tr><th>Variabel</th><th>Jumlah Missing Value</th></tr></thead>
+        <tbody>
+          {% for h, c in handled_counts.items() %}
+          <tr><td>{{ h }}</td><td>{{ c }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="badge ok" style="margin-top:12px;">
+      Missing value dengan ditangani (median). Jumlah missing value: {{ handled_total }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" id="card-aggregate">
+  <h3>4. Agregasi Data Multi-Tahun</h3>
+  {% if multi_year %}
+  <p class="card-desc">
+    Data mencakup <b>{{ n_years }} tahun</b> berbeda. Klik tombol di bawah untuk merata-ratakan (MEAN) data
+    per Kabupaten/Kota dari seluruh tahun tersebut, menggunakan data yang missing value-nya sudah ditangani di atas.
+  </p>
+  <form action="{{ url_for('processing_aggregate') }}" method="post">
+    <button type="submit" class="btn secondary" {% if not handled_counts %}disabled{% endif %}>Agregasikan Data</button>
+  </form>
+  {% if aggregated and agg_preview %}
+  <div style="margin-top:16px;">
+    <h3>Hasil Agregasi ({{ agg_row_count }} baris unik Kabupaten/Kota)</h3>
+    <div class="table-wrap short">
+      <table>
+        <thead><tr>{% for c in agg_cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in agg_preview %}
+          <tr>{% for c in agg_cols %}<td>{{ row[c] if row[c] is not none else '—' }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if agg_message %}
+    <div class="badge ok" style="margin-top:12px;">{{ agg_message }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="empty-hint">Data hanya mencakup 1 tahun — agregasi tidak diperlukan, lanjut langsung ke Standarisasi Data.</div>
+  {% endif %}
+</div>
+
+<div class="card" id="card-outlier">
+  <h3>5. Cek &amp; Tangani Outlier (Metode IQR)</h3>
+  <p class="card-desc">
+    Deteksi outlier menggunakan <b>IQR (Interquartile Range)</b>: nilai dianggap outlier bila berada di luar
+    <span class="mono">[Q1 − 1.5×IQR, Q3 + 1.5×IQR]</span>. Outlier ditangani dengan <b>Capping/Winsorizing</b> —
+    nilai yang lebih kecil dari batas bawah diganti batas bawah, dan yang lebih besar dari batas atas diganti batas atas
+    (baris data tidak dihapus).
+  </p>
+
+  <form action="{{ url_for('processing_check_outlier') }}" method="post" style="display:inline-block;margin-right:8px;">
+    <button type="submit" class="btn secondary" {% if not aggregated %}disabled{% endif %}>Cek Outlier</button>
+  </form>
+  <form action="{{ url_for('processing_handle_outlier') }}" method="post" style="display:inline-block;">
+    <button type="submit" class="btn secondary" {% if not outlier_counts %}disabled{% endif %}>Tangani Outlier</button>
+  </form>
+
+  {% if outlier_counts %}
+  <div style="margin-top:16px;">
+    <h3>Jumlah &amp; Persentase Outlier {{ '(Sebelum Ditangani)' if not outlier_handled else '(Sebelum Ditangani, untuk referensi)' }}</h3>
+    <div class="table-wrap short">
+      <table>
+        <thead><tr><th>Variabel</th><th>Jumlah Outlier</th><th>Persentase</th></tr></thead>
+        <tbody>
+          {% for h, c in outlier_counts.items() %}
+          <tr><td>{{ h }}</td><td>{{ c }}</td><td>{{ '%.2f'|format(outlier_percents[h]) }}%</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="badge {{ 'warn' if outlier_total > 0 else 'ok' }}" style="margin-top:12px;">
+      Total outlier terdeteksi: {{ outlier_total }}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if outlier_handled %}
+  <div style="margin-top:16px;">
+    <h3>Jumlah &amp; Persentase Outlier Setelah Ditangani</h3>
+    <div class="table-wrap short">
+      <table>
+        <thead><tr><th>Variabel</th><th>Jumlah Outlier</th><th>Persentase</th></tr></thead>
+        <tbody>
+          {% for h, c in outlier_handled_counts.items() %}
+          <tr><td>{{ h }}</td><td>{{ c }}</td><td>{{ '%.2f'|format(outlier_handled_percents[h]) }}%</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="badge ok" style="margin-top:12px;">
+      Seluruh outlier telah ditangani (capping IQR). Jumlah outlier tersisa: {{ outlier_handled_total }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" id="card-standardize">
+  <h3>6. Standarisasi Data (RobustScaler)</h3>
+  <p class="card-desc">
+    Menggunakan <b>RobustScaler</b> (sklearn) yang berbasis <b>Median</b> &amp; <b>IQR</b> (Interquartile Range), bukan mean/std biasa — sehingga lebih tahan terhadap outlier/pencilan pada data timbulan sampah antar wilayah.<br>
+    Rumus: <span class="mono">x_standar = (x − median) / IQR</span>, dengan <span class="mono">IQR = Q3 − Q1</span> (persentil ke-75 dikurangi persentil ke-25).
+  </p>
+  <form action="{{ url_for('processing_standardize') }}" method="post">
+    <button type="submit" class="btn secondary" {% if not outlier_handled %}disabled{% endif %}>Standarisasi Data</button>
+  </form>
+  {% if standardize_rows %}
+  <div style="margin-top:16px;">
+    <h3>Hasil Standarisasi (RobustScaler)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>{% for c in standardize_cols %}<th>{{ c }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in standardize_rows %}
+          <tr>{% for c in standardize_cols %}<td class="mono">{{ row[c] }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<a class="btn next" href="{{ url_for('modeling_page') if standardize_rows else '#' }}"
+   {% if not standardize_rows %}style="pointer-events:none;background:#B9BEB8;"{% endif %}>
+   Lanjutkan ke Pemodelan K-Means →
+</a>
+{% endblock %}

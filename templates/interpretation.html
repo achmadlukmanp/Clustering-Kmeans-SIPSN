@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+{% set active = "interpretation" %}
+{% block content %}
+<div class="eyebrow-tag">Langkah 6</div>
+<h2 class="page-title">Interpretasi Klaster</h2>
+<p class="page-sub">Halaman ini menjelaskan ciri-ciri tiap kelompok (klaster) wilayah secara sederhana, berdasarkan pola pengelolaan sampahnya — sehingga mudah dipahami meski tanpa latar belakang statistik.</p>
+
+<!-- Ringkasan Metrik Model -->
+<div class="card">
+  <h3>Ringkasan Metrik Model (k = {{ k }})</h3>
+  <p class="card-desc">
+    Silhouette Score = <b class="mono">{{ "%.3f"|format(sil) }}</b> (<b>{{ sil_label }}</b>) ·
+    Davies-Bouldin Index = <b class="mono">{{ "%.3f"|format(dbi) }}</b> (<b>{{ dbi_label }}</b>, {{ dbi_detail }}).
+    Interpretasi tiap klaster di bawah ini mengacu pada kombinasi kedua metrik tersebut sebagai indikator seberapa dapat diandalkan pembagian klaster yang dihasilkan.
+  </p>
+</div>
+
+<!-- Grid Grafik & Ringkasan -->
+<div class="grid-2">
+  <div class="card">
+    <h3>Distribusi Jumlah Wilayah per Klaster</h3>
+    <div class="chart-box" style="position: relative; height: 260px; width: 100%;">
+      <canvas id="pieChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Ringkasan Klaster</h3>
+    <p class="card-desc">Jumlah wilayah tiap klaster (lihat tabel provinsi lengkap di bawah untuk rincian per provinsi).</p>
+    <div class="table-wrap short">
+      <table>
+        <thead>
+          <tr>
+            <th>Klaster</th>
+            <th>Jumlah Wilayah</th>
+            <th>Persentase</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in range(k) %}
+          <tr>
+            <td><span class="cluster-tag" style="background:{{ colors[c] }}">Klaster {{ c+1 }}</span></td>
+            <td>{{ counts[c] }}</td>
+            <td>{{ "%.1f"|format(counts[c]/n*100) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tabel Wilayah per Provinsi -->
+<div class="card">
+  <!-- Header Card dengan Tombol Export -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 8px;">
+    <div>
+      <h3 style="margin:0;">Jumlah Wilayah Provinsi per Klaster</h3>
+      <p class="card-desc" style="margin-top:4px;">Menunjukkan sebaran jumlah wilayah tiap provinsi ke masing-masing klaster. Klik "Detail" untuk melihat nama wilayahnya.</p>
+    </div>
+    
+    {% if prov_table %}
+    <button type="button" class="btn secondary" onclick="exportToExcel()" style="display: inline-flex; align-items: center; gap: 6px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export Hasil (.xlsx)
+    </button>
+    {% endif %}
+  </div>
+
+  {% if prov_table %}
+  <div class="table-wrap short">
+    <table style="table-layout:fixed; width: 100%;">
+      <colgroup>
+        <col style="width:auto; min-width:140px;">
+        {% for c in range(k) %}<col style="width:70px;">{% endfor %}
+        <col style="width:70px;">
+        <col style="width:90px;">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Provinsi</th>
+          {% for c in range(k) %}
+            <th>Klaster {{ c+1 }}</th>
+          {% endfor %}
+          <th>Total</th>
+          <th style="text-align: center;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for prov in prov_table.provinces %}
+        {% set row_data = prov_table.rows[loop.index0] %}
+        <tr>
+          <td style="white-space:normal; word-break:break-word;"><b>{{ prov }}</b></td>
+          
+          {% for val in row_data[:-1] %}
+            <td>{{ val }}</td>
+          {% endfor %}
+
+          <td><b>{{ row_data[-1] }}</b></td>
+
+          <td style="text-align: center;">
+            <button type="button" class="btn secondary" style="padding:4px 8px; font-size:10.5px; white-space:nowrap;" onclick="toggleProvDetail('prov-detail-{{ loop.index0 }}')">
+              Detail
+            </button>
+          </td>
+        </tr>
+
+        <tr id="prov-detail-{{ loop.index0 }}" style="display:none; background:var(--surface-soft, #f8fafc);">
+          <td colspan="{{ k + 3 }}" style="white-space:normal; padding: 12px 16px;">
+            {% set members_by_cluster = prov_table.detail.get(prov, {}) %}
+            {% set has_members = false %}
+            
+            {% for c in range(k) %}
+              {% if c in members_by_cluster and members_by_cluster[c] %}
+                {% set has_members = true %}
+                <div style="margin:6px 0; display: flex; align-items: flex-start; gap: 8px;">
+                  <span class="cluster-tag" style="background:{{ colors[c] }}; flex-shrink: 0;">Klaster {{ c+1 }}</span>
+                  <span style="font-size: 13px; color: #4a5568; line-height: 1.4;">{{ members_by_cluster[c]|join(', ') }}</span>
+                </div>
+              {% endif %}
+            {% endfor %}
+
+            {% if not has_members %}
+              <span style="font-size: 12px; color: #a0aec0; font-style: italic;">Tidak ada data detail wilayah.</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-hint">Kolom Provinsi tidak dipilih pada tahap Upload Data, sehingga tabel ini tidak dapat ditampilkan.</div>
+  {% endif %}
+</div>
+
+<!-- Tabel Statistik Deskriptif -->
+<div class="card">
+  <h3>Statistik Deskriptif per Variabel per Klaster</h3>
+  <p class="card-desc">Ringkasan nilai Mean, Std Dev, Min, dan Max tiap variabel pada masing-masing klaster.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Klaster</th>
+          <th>Statistik</th>
+          {% for h in headers %}<th>{{ h }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stats %}
+          <tr>
+            <td rowspan="4" style="vertical-align: middle;"><span class="cluster-tag" style="background:{{ colors[loop.index0] }}">Klaster {{ s.cluster }}</span></td>
+            <td><b>Mean</b></td>
+            {% for h in headers %}<td>{{ s.mean[h] }}</td>{% endfor %}
+          </tr>
+          <tr>
+            <td><b>Std Dev</b></td>
+            {% for h in headers %}<td>{{ s.std[h] }}</td>{% endfor %}
+          </tr>
+          <tr>
+            <td><b>Min</b></td>
+            {% for h in headers %}<td>{{ s.min[h] }}</td>{% endfor %}
+          </tr>
+          <tr>
+            <td><b>Max</b></td>
+            {% for h in headers %}<td>{{ s.max[h] }}</td>{% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Chart Bar Rata-rata Persentase Pengurangan & Penanganan -->
+<div class="card">
+  <h3>Rata-rata Persentase Pengurangan &amp; Penanganan Sampah per Klaster</h3>
+  {% if pct_ready %}
+  <p class="card-desc">
+    Rata-rata persentase pengurangan dan penanganan sampah dihitung berdasarkan nilai centroid tiap klaster terhadap total timbulan tahunan. 
+    <span style="display: inline-block; margin-top: 2px; color: #64748B; font-size: 11.5px;">
+      (Variabel acuan: <b>{{ timbulan_col }}</b>, <b>{{ pengurangan_col }}</b>, dan <b>{{ penanganan_col }}</b>)
+    </span>
+  </p>
+  <div class="chart-box" style="position: relative; height: 380px; width: 100%;">
+    <canvas id="barChart"></canvas>
+  </div>
+  <div style="margin-top:16px;">
+    {% for c in conclusions %}
+    <div style="margin-bottom:6px;">
+      <span class="cluster-tag" style="background:{{ c.color }}">Klaster {{ c.cluster }}</span>
+      &nbsp; % Pengurangan: <b class="mono">{{ c.avg_p }}%</b>
+      &nbsp;·&nbsp; % Penanganan: <b class="mono">{{ c.avg_t }}%</b>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-hint">Kolom Timbulan/Pengurangan/Penanganan tidak lengkap terdeteksi pada variabel yang dipilih, sehingga persentase tidak dapat dihitung. Pastikan variabel dengan nama mengandung "Timbulan", "Pengurangan", dan "Penanganan" disertakan pada tahap Upload Data.</div>
+  {% endif %}
+</div>
+
+<!-- Kesimpulan Pengelolaan Sampah -->
+<div class="card">
+  <h3>Kesimpulan Pengelolaan Sampah Tiap Klaster</h3>
+  
+  <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+    {% for c in conclusions %}
+    <div style="
+      border-left: 5px solid {{ c.color }};
+      background: var(--surface-soft, #F8FAFC);
+      padding: 14px 18px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    ">
+      <div>
+        <div style="font-weight: 700; font-size: 15px; color: #1E293B; margin-bottom: 4px;">
+          Klaster {{ c.cluster }}
+        </div>
+        <div style="font-size: 13.5px; color: #475569;">
+          Rata-rata Pengurangan: <b>{{ c.avg_p }}%</b> &nbsp;·&nbsp; Rata-rata Penanganan: <b>{{ c.avg_t }}%</b>
+        </div>
+      </div>
+
+      <!-- Penyesuaian Dinamis Style Warna Badge berdasarkan Tingkatan Level (k=2 s/d k=6) -->
+      {% if 'SANGAT TINGGI' in c.level %}
+        {% set bg_color = 'rgba(15, 118, 110, 0.12)' %}
+        {% set text_color = '#0F766E' %}
+      {% elif 'TINGGI' in c.level %}
+        {% set bg_color = 'rgba(31, 111, 92, 0.1)' %}
+        {% set text_color = 'var(--primary, #1F6F5C)' %}
+      {% elif 'SEDANG' in c.level %}
+        {% set bg_color = 'rgba(214, 140, 52, 0.1)' %}
+        {% set text_color = 'var(--accent, #D68C34)' %}
+      {% elif 'SANGAT RENDAH' in c.level %}
+        {% set bg_color = 'rgba(153, 27, 27, 0.12)' %}
+        {% set text_color = '#991B1B' %}
+      {% else %}
+        {% set bg_color = 'rgba(182, 92, 56, 0.1)' %}
+        {% set text_color = 'var(--clay, #B65C38)' %}
+      {% endif %}
+
+      <div style="
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        background: {{ bg_color }};
+        color: {{ text_color }};
+      ">
+         {{ c.level }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+ <!-- Catatan Penutup Insight & Tujuan Sistem -->
+  <div style="
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #F1F5F9;
+    border-left: 4px solid var(--primary, #1F6F5C);
+    border-radius: 6px;
+    font-size: 12.5px;
+    color: #334155;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  ">
+    <span style="font-size: 16px; line-height: 1;">💡</span>
+    <div>
+      <b style="color: #0F172A;">Kesimpulan:</b> 
+      Pengelompokan {{ k }} klaster ini berhasil mengidentifikasi pola kesenjangan kinerja pengelolaan sampah antardaerah. Sistem ini dihadirkan untuk membantu <i>stakeholder</i> dan pemerintah daerah dalam memetakan wilayah prioritas penanganan, sehingga program bantuan infrastruktur maupun edukasi lingkungan dapat disalurkan secara presisi dan efisien.
+    </div>
+  </div>
+
+<!-- Library External (Chart.js & SheetJS untuk Excel) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  function toggleProvDetail(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'table-row' : 'none';
+    }
+  }
+
+// Function Export to Excel (Model B - Single Sheet)
+  function exportToExcel() {
+    const provRows = {{ prov_table.rows|tojson if prov_table else '[]' }};
+    const provNames = {{ prov_table.provinces|tojson if prov_table else '[]' }};
+    const detailData = {{ prov_table.detail|tojson if prov_table else '{}' }};
+    const kCount = {{ k if k else 0 }};
+
+    if (provNames.length === 0) {
+      alert('Tidak ada data untuk diexport.');
+      return;
+    }
+
+    const excelData = [];
+
+    provNames.forEach((prov, idx) => {
+      const rowCounts = provRows[idx];
+      const rowObj = { 'Provinsi': prov };
+
+      const membersByCluster = detailData[prov] || {};
+
+      for (let c = 0; c < kCount; c++) {
+        const clusterNum = c + 1;
+        const count = rowCounts[c];
+        const cities = membersByCluster[c] || [];
+        
+        // --- NAMA KOLOM DIPERBARUI DI SINI ---
+        rowObj[`Jumlah Wilayah Klaster ${clusterNum}`] = count;
+        rowObj[`Detail Wilayah Klaster ${clusterNum}`] = cities.length > 0 ? cities.join(', ') : '-';
+      }
+
+      rowObj['Total'] = rowCounts[rowCounts.length - 1];
+      excelData.push(rowObj);
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    const colWidths = [{ wch: 25 }];
+    for (let c = 0; c < kCount; c++) {
+      colWidths.push({ wch: 22 }); // Lebar kolom disesuaikan agar judul header tidak terpotong
+      colWidths.push({ wch: 45 });
+    }
+    colWidths.push({ wch: 12 });
+
+    worksheet['!cols'] = colWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap & Detail Wilayah");
+
+    XLSX.writeFile(workbook, "Hasil_Klasterisasi_Sebaran_Wilayah.xlsx");
+  }
+  
+  document.addEventListener("DOMContentLoaded", function () {
+    // 1. Inisialisasi Pie Chart
+    const pieCanvas = document.getElementById('pieChart');
+    if (pieCanvas) {
+      const rawLabels = {{ pie_labels|tojson }};
+      const rawCounts = {{ counts|tojson }};
+      const cleanLabels = rawLabels.map(l => l.replace(/\s*\(\d+(\.\d+)?%\)/g, ''));
+
+      new Chart(pieCanvas.getContext('2d'), {
+        type: 'pie',
+        data: {
+          labels: cleanLabels,
+          datasets: [{
+            data: rawCounts,
+            backgroundColor: {{ colors[:k]|tojson }},
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                usePointStyle: true,
+                pointStyle: 'circle',
+                padding: 16,
+                font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: '500' },
+                color: '#2D3748',
+                generateLabels: function(chart) {
+                  const data = chart.data;
+                  if (data.labels.length && data.datasets.length) {
+                    const dataset = data.datasets[0];
+                    const total = dataset.data.reduce((a, b) => a + b, 0);
+
+                    return data.labels.map((label, i) => {
+                      const value = dataset.data[i];
+                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                      return {
+                        text: `${label} (${percentage}%)`,
+                        fillStyle: dataset.backgroundColor[i],
+                        strokeStyle: '#ffffff',
+                        lineWidth: 0,
+                        hidden: isNaN(dataset.data[i]) || (chart.getDatasetMeta(0).data[i] && chart.getDatasetMeta(0).data[i].hidden),
+                        index: i
+                      };
+                    });
+                  }
+                  return [];
+                }
+              }
+            },
+            tooltip: {
+              enabled: true,
+              backgroundColor: '#1E293B',
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function(context) {
+                  const value = context.parsed || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = ((value / total) * 100).toFixed(1);
+                  return ` ${value} Wilayah (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Inisialisasi Bar Chart
+    const barCanvas = document.getElementById('barChart');
+    if (barCanvas) {
+      const nativeTopLabelsPlugin = {
+        id: 'nativeTopLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          ctx.save();
+          ctx.font = '11px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const val = dataset.data[index];
+              if (val !== undefined && val !== null) {
+                ctx.fillText(Number(val).toFixed(2) + '%', bar.x, bar.y - 4);
+              }
+            });
+          });
+          ctx.restore();
+        }
+      };
+
+      const labels = Array.from({length: {{ k }}}, (_, i) => 'Klaster ' + (i + 1));
+
+      const data = {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Persentase Pengurangan',
+            data: {{ avg_p|tojson }},
+            backgroundColor: '#28a745',
+            borderColor: '#000000',
+            borderWidth: 1,
+            barPercentage: 0.8,
+            categoryPercentage: 0.6
+          },
+          {
+            label: 'Persentase Penanganan',
+            data: {{ avg_t|tojson }},
+            backgroundColor: '#ffc107',
+            borderColor: '#000000',
+            borderWidth: 1,
+            barPercentage: 0.8,
+            categoryPercentage: 0.6
+          }
+        ]
+      };
+
+      const config = {
+        type: 'bar',
+        data: data,
+        plugins: [nativeTopLabelsPlugin],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 25
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'start',
+              labels: {
+                boxWidth: 16,
+                boxHeight: 12,
+                padding: 12,
+                color: '#000000',
+                font: { size: 12 }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#1E293B',
+              padding: 10,
+              cornerRadius: 6
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              title: {
+                display: true,
+                text: 'Klaster',
+                color: '#000000',
+                font: { size: 12 }
+              },
+              ticks: { 
+                color: '#000000',
+                font: { size: 12 } 
+              }
+            },
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: '#d1d5db',
+                borderDash: [4, 4]
+              },
+              title: {
+                display: true,
+                text: 'Persentase (%)',
+                color: '#000000',
+                font: { size: 12 }
+              },
+              ticks: {
+                color: '#000000',
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      };
+
+      new Chart(barCanvas.getContext('2d'), config);
+    }
+  });
+</script>
+
+{% endblock %}

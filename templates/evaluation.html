@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% set active = "evaluation" %}
+{% block content %}
+<div class="eyebrow-tag">Langkah 5</div>
+<h2 class="page-title">Evaluasi Model</h2>
+<p class="page-sub">Kualitas hasil klaster diukur menggunakan Silhouette Score dan Davies-Bouldin Index (DBI). Silhouette Score idealnya mendekati 1, sedangkan DBI idealnya mendekati 0.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>Silhouette Score (k = {{ k }})</h3>
+    <div class="score-hero">
+      <div class="score-circle" style="background:conic-gradient(var(--primary) calc({{ pct }}*1%), var(--surface-soft) 0);">
+        <div class="val">{{ "%.3f"|format(score) }}</div>
+      </div>
+      <div class="interp-text">Kualitas clustering <b>{{ label }}</b> ({{ detail }}).</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Davies-Bouldin Index (k = {{ k }})</h3>
+    <div class="score-hero">
+      <div class="score-circle" style="background:conic-gradient(var(--accent) calc({{ dbi_pct }}*1%), var(--surface-soft) 0);">
+        <div class="val">{{ "%.3f"|format(dbi) }}</div>
+      </div>
+      <div class="interp-text">Tingkat pemisahan antar klaster <b>{{ dbi_label }}</b> ({{ dbi_detail }}). Semakin kecil / mendekati 0 nilai DBI, semakin baik kualitas klasternya.</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Tabel Evaluasi k = 2 s.d. 6 (Silhouette, DBI)</h3>
+  <p class="card-desc">
+    K optimal ditandai pada baris di mana <b>Silhouette Score tertinggi</b> (mendekati 1) dan <b>Davies-Bouldin Index terendah</b> (mendekati 0) secara bersama-sama.
+  </p>
+
+  <!-- Tabel Evaluasi: dirender dari table_rows (dikirim app.py), BUKAN hardcode.
+       Baris dengan k == k_optimal otomatis di-highlight dan diberi badge. -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%;">k</th>
+          <th style="width: 40%;">Silhouette Score</th>
+          <th style="width: 40%;">Davies-Bouldin Index</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in table_rows %}
+        <tr{% if row.k == k_optimal %} style="background-color: #FEF3C7; font-weight: 600;"{% endif %}>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>{{ row.k }}</span>
+              {% if row.k == k_optimal %}
+              <span style="
+                background: #1F6F5C;
+                color: #FFFFFF;
+                font-size: 11px;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-weight: 600;
+              ">k optimal</span>
+              {% endif %}
+            </div>
+          </td>
+          <td class="mono">{{ "%.3f"|format(row.sil) }}</td>
+          <td class="mono">{{ "%.3f"|format(row.dbi) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Note Kesimpulan k Optimal: angka diambil dari k_optimal_sil / k_optimal_dbi
+       (metrics_cache milik k_optimal), sehingga selalu sinkron dengan baris
+       "k optimal" pada tabel di atas. -->
+  <div style="
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: #FFFBEB;
+    border: 1px solid #FCD34D;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #92400E;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  ">
+    <span>💡</span>
+    <span>
+      <b>Kesimpulan:</b> Jumlah cluster terbaik adalah <b>k = {{ k_optimal }}</b> karena memiliki kombinasi Silhouette Score tertinggi (<b>{{ "%.3f"|format(k_optimal_sil) }}</b>) dan Davies-Bouldin Index terendah (<b>{{ "%.3f"|format(k_optimal_dbi) }}</b>).
+    </span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Panduan Interpretasi Silhouette Score</h3>
+  <div class="table-wrap short">
+    <table class="ref-table">
+      <thead><tr><th>Rentang Skor</th><th>Kualitas Struktur Klaster</th></tr></thead>
+      <tbody>
+        <tr><td class="range">0.71 – 1.00</td><td>Sangat baik — struktur klaster sangat kuat</td></tr>
+        <tr><td class="range">0.51 – 0.70</td><td>Baik — struktur klaster cukup kuat</td></tr>
+        <tr><td class="range">0.26 – 0.50</td><td>Cukup — struktur lemah namun masih dapat diterima</td></tr>
+        <tr><td class="range">≤ 0.25</td><td>Kurang baik — tidak ditemukan struktur klaster yang jelas</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Panduan Interpretasi Davies-Bouldin Index</h3>
+  <div class="table-wrap short">
+    <table class="ref-table">
+      <thead><tr><th>Rentang Skor</th><th>Kualitas Pemisahan Klaster</th></tr></thead>
+      <tbody>
+        <tr><td class="range">&lt; 0.5</td><td>Sangat baik — klaster sangat rapat &amp; terpisah jelas</td></tr>
+        <tr><td class="range">0.5 – 1.0</td><td>Baik — klaster cukup terpisah</td></tr>
+        <tr><td class="range">1.0 – 1.5</td><td>Cukup — sedikit tumpang tindih antar klaster</td></tr>
+        <tr><td class="range">&gt; 1.5</td><td>Kurang baik — klaster banyak tumpang tindih</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<a class="btn next" href="{{ url_for('interpretation_page') }}">Lanjutkan ke Interpretasi Klaster →</a>
+{% endblock %}

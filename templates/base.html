@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Klasterisasi Pengelolaan Sampah{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="eyebrow">Dashboard Analisis Pengelolaan Sampah</div>
+      <div class="name">Klasterisasi Wilayah di Indonesia dengan <br> K-Means</div>
+    </div>
+    <nav class="steps">
+      <a class="step-btn {{ 'active' if active=='home' else '' }}" href="{{ url_for('home') }}">
+        <span class="step-dot">1</span><span class="step-label">Home<small>Judul &amp; ringkasan</small></span>
+      </a>
+      <a class="step-btn {{ 'active' if active=='upload' else '' }}" href="{{ url_for('upload_page') }}">
+        <span class="step-dot">2</span><span class="step-label">Upload Data<small>Unggah &amp; gabungkan Excel</small></span>
+      </a>
+      <a class="step-btn {{ 'active' if active=='processing' else '' }} {{ '' if unlocked.processing else 'locked' }}"
+         href="{{ url_for('processing_page') if unlocked.processing else '#' }}">
+        <span class="step-dot">3</span><span class="step-label">Processing Data<small>Rename, missing value, standarisasi</small></span>
+      </a>
+      <a class="step-btn {{ 'active' if active=='modeling' else '' }} {{ '' if unlocked.modeling else 'locked' }}"
+         href="{{ url_for('modeling_page') if unlocked.modeling else '#' }}">
+        <span class="step-dot">4</span><span class="step-label">Pemodelan K-Means<small>Elbow, silhouette, k</small></span>
+      </a>
+      <a class="step-btn {{ 'active' if active=='evaluation' else '' }} {{ '' if unlocked.evaluation else 'locked' }}"
+         href="{{ url_for('evaluation_page') if unlocked.evaluation else '#' }}">
+        <span class="step-dot">5</span><span class="step-label">Evaluasi Model<small>Skor silhouette</small></span>
+      </a>
+      <a class="step-btn {{ 'active' if active=='interpretation' else '' }} {{ '' if unlocked.interpretation else 'locked' }}"
+         href="{{ url_for('interpretation_page') if unlocked.interpretation else '#' }}">
+        <span class="step-dot">6</span><span class="step-label">Interpretasi Klaster<small>Profil tiap klaster</small></span>
+      </a>
+    </nav>
+    <div class="sidebar-foot">
+      <form action="{{ url_for('reset_all') }}" method="post" onsubmit="return confirm('Mulai ulang analisis? Semua data akan dihapus.');">
+        <button type="submit" class="reset-btn">↺ Mulai ulang analisis</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>
